@@ -5,7 +5,7 @@ from typing import List
 import os
 
 # Configure the API endpoint
-API_BASE_URL = "http://localhost:9696"  # Change this to your deployed API URL
+API_BASE_URL = "https://murshad-chatbot-542808340038.us-central1.run.app/"  # Change this to your deployed API URL
 
 def main():
     st.title("Marahel Document Q&A ")
