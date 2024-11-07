@@ -5,7 +5,15 @@ from typing import List
 import os
 
 # Configure the API endpoint
-API_BASE_URL = "https://murshad-chatbot-542808340038.us-central1.run.app/"  # Change this to your deployed API URL
+API_BASE_URL = "https://murshad-openai-542808340038.us-central1.run.app/"  # Change this to your deployed API URL
+
+# Add this near the top of the file
+EMBEDDING_MODELS = [
+    "openai",
+    "asafaya/bert-base-arabic",
+    "Omartificial-Intelligence-Space/Arabic-mpnet-base-all-nli-triplet",
+    "Omartificial-Intelligence-Space/Arabic-Triplet-Matryoshka-V2",
+]
 
 def main():
     st.title("Marahel Document Q&A ")
@@ -22,13 +30,14 @@ def main():
         uploaded_files = st.file_uploader(
             "Upload your documents", 
             accept_multiple_files=True,
-            type=['pdf', 'docx', 'txt'],
+            type=['pdf', 'docx', 'txt', 'doc'],
             key="unique_file_uploader_key"
         )
         
-        embeddings_model = st.text_input(
-            "Embeddings Model Name",
-            value="Omartificial-Intelligence-Space/Arabic-mpnet-base-all-nli-triplet"
+        embeddings_model = st.selectbox(
+            "Select Embeddings Model",
+            options=EMBEDDING_MODELS,
+            index=1  # Default to the second option
         )
         
         if uploaded_files and st.button("Process Documents"):
@@ -76,32 +85,49 @@ def main():
     if st.session_state.collection_name:
         st.info(f"Current Collection: {st.session_state.collection_name}")
         
-        # Chat interface
-        with st.form(key='chat_form'):
-            user_question = st.text_input("Ask a question about your documents:")
-            submit_button = st.form_submit_button(label='Get Answer')
-        
-        if submit_button:
-            try:
-                response = requests.post(
-                    f"{API_BASE_URL}/api/chat-bot",
-                    json={
-                        "query": user_question,
-                        "collection_name": st.session_state.collection_name,
-                        "Embeddings_model": st.session_state.embeddings_model
-                    }
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    st.write("Answer:")
-                    st.write(result["data"])
-                else:
-                    st.error(f"Error: {response.json()['message']}")
+        # Initialize chat history if it doesn't exist
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        # Display chat history
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        # Chat input
+        if prompt := st.chat_input("Ask a question about your documents..."):
+            # Display user message
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            st.session_state.messages.append({"role": "user", "content": prompt})
+
+            # Display assistant response
+            with st.chat_message("assistant"):
+                try:
+                    response = requests.post(
+                        f"{API_BASE_URL}/api/chat-bot",
+                        json={
+                            "query": prompt,
+                            "collection_name": st.session_state.collection_name,
+                            "Embeddings_model": st.session_state.embeddings_model
+                        }
+                    )
                     
-            except Exception as e:
-                st.error(f"Error connecting to the API: {str(e)}")
-    
+                    if response.status_code == 200:
+                        result = response.json()
+                        answer = result["data"]
+                        st.markdown(answer)
+                        st.session_state.messages.append({"role": "assistant", "content": answer})
+                    else:
+                        error_message = f"Error: {response.json()['message']}"
+                        st.error(error_message)
+                        st.session_state.messages.append({"role": "assistant", "content": error_message})
+                        
+                except Exception as e:
+                    error_message = f"Error connecting to the API: {str(e)}"
+                    st.error(error_message)
+                    st.session_state.messages.append({"role": "assistant", "content": error_message})
+
     else:
         st.info("Please upload documents first using the sidebar.")
 
