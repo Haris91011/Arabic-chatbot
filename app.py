@@ -5,7 +5,7 @@ from typing import List
 import os
 
 # Configure the API endpoint
-API_BASE_URL = "https://murshad-openai-542808340038.us-central1.run.app/"  # Change this to your deployed API URL
+API_BASE_URL = "http://164.92.217.246/"  # Change this to your deployed API URL
 
 # Add this near the top of the file
 EMBEDDING_MODELS = [
