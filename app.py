@@ -4,7 +4,7 @@ import json
 import uuid
 
 # Configure the base URL for your FastAPI backend
-BASE_URL = "http://localhost:9696"  # Adjust this to your FastAPI server URL
+BASE_URL = "https://testing.murshed.marahel.sa/"  # Adjust this to your FastAPI server URL
 
 def main():
     st.title("MARAHEL QA chatBot")
