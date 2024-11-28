@@ -6,12 +6,15 @@ import uuid
 # Configure the base URL for your FastAPI backend
 BASE_URL = "https://testing.murshed.marahel.sa/"  # Adjust this to your FastAPI server URL
 
+# Hardcoded chatbot ID
+DEFAULT_CHATBOT_ID = "de305d54-75b4-431b-adb2-eb6b9e546014"
+
 def main():
     st.title("MARAHEL QA chatBot")
     
     # Initialize session state variables if they don't exist
-    if 'current_uuid' not in st.session_state:
-        st.session_state.current_uuid = None
+    if 'chatbot_id' not in st.session_state:
+        st.session_state.chatbot_id = None
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
 
@@ -19,21 +22,18 @@ def main():
     with st.sidebar:
         st.header("Configuration")
         
-        # LLM Model selection
-        llm_model = st.selectbox(
-            "Select LLM Model",
-            ["OpenAI", "Claude-3-Sonnet"],
-            key="llm_model"
-        )
-        
-        # Embeddings Model selection
-        embeddings_model = st.selectbox(
-            "Select Embeddings Model",
-            ["openai", "asafaya/bert-base-arabic", 
-            "Omartificial-Intelligence-Space/Arabic-mpnet-base-all-nli-triplet",
-            "Omartificial-Intelligence-Space/Arabic-Triplet-Matryoshka-V2"],
-            key="embeddings_model"
-        )
+        # Chatbot ID input with default value hint
+        st.info(f"Default Chatbot ID: {DEFAULT_CHATBOT_ID}")
+        chatbot_id = st.text_input("Enter Chatbot ID", key="chatbot_id_input")
+        if chatbot_id:
+            st.session_state.chatbot_id = chatbot_id
+        else:
+            st.session_state.chatbot_id = DEFAULT_CHATBOT_ID
+            
+        # User ID input
+        user_id = st.text_input("Enter User ID", key="user_id_input")
+        if user_id:
+            st.session_state.user_id = user_id
         
         # File uploader
         uploaded_files = st.file_uploader(
@@ -48,20 +48,18 @@ def main():
                     # Create a list of files in the correct format for multipart/form-data
                     files = []
                     for uploaded_file in uploaded_files:
-                        # Read the file content
                         file_content = uploaded_file.read()
-                        # Log file details
                         st.write(f"Processing file: {uploaded_file.name}, Size: {len(file_content)} bytes")
                         files.append(('files', (uploaded_file.name, file_content, uploaded_file.type)))
                     
                     # Log request details
                     st.write(f"Sending request to: {BASE_URL}/api/Ingestion_File")
-                    st.write(f"Selected embeddings model: {embeddings_model}")
                     
+                    # Include only chatbot_id in the form data for file insertion
                     response = requests.post(
                         f"{BASE_URL}/api/Ingestion_File",
                         files=files,
-                        params={"Embeddings_model": embeddings_model}
+                        data={"chatbot_id": st.session_state.chatbot_id}
                     )
                     
                     # Log response details
@@ -69,10 +67,7 @@ def main():
                     st.write(f"Response content: {response.text}")
                     
                     if response.status_code == 200:
-                        result = response.json()
-                        st.session_state.current_uuid = result["uuid"]
                         st.success("Documents processed successfully!")
-                        st.write(f"Collection UUID: {st.session_state.current_uuid}")
                     else:
                         error_message = response.json().get('message', 'Unknown error occurred')
                         st.error(f"Error: {error_message}")
@@ -83,15 +78,14 @@ def main():
                     st.error(f"Invalid JSON response: {str(e)}")
         
         # Delete collection button
-        if st.session_state.current_uuid and st.button("Delete Current Collection"):
+        if st.button("Delete Current Collection"):
             try:
                 response = requests.delete(
                     f"{BASE_URL}/api/delete-collection",
-                    json={"uuid": st.session_state.current_uuid}
+                    json={"chatbot_id": st.session_state.chatbot_id}
                 )
                 if response.status_code == 200:
                     st.success("Collection deleted successfully!")
-                    st.session_state.current_uuid = None
                     st.session_state.chat_history = []
                 else:
                     st.error(f"Error: {response.json()['message']}")
@@ -101,7 +95,7 @@ def main():
     # Main chat interface
     st.header("Chat Interface")
     
-    if st.session_state.current_uuid:
+    if hasattr(st.session_state, 'user_id'):
         # Display chat history
         for message in st.session_state.chat_history:
             role = message["role"]
@@ -111,6 +105,10 @@ def main():
 
         # Chat input
         if prompt := st.chat_input("Ask a question about your documents"):
+            if not st.session_state.user_id:
+                st.error("Please enter a User ID first")
+                return
+                
             # Display user message
             with st.chat_message("user"):
                 st.write(prompt)
@@ -124,8 +122,8 @@ def main():
                     f"{BASE_URL}/api/chat-bot",
                     json={
                         "query": prompt,
-                        "uuid": st.session_state.current_uuid,
-                        "llm_model": llm_model
+                        "chatbot_id": st.session_state.chatbot_id,
+                        "user_id": st.session_state.user_id
                     }
                 )
                 
@@ -141,7 +139,7 @@ def main():
             except Exception as e:
                 st.error(f"Error getting response: {str(e)}")
     else:
-        st.info("Please upload documents to start chatting.")
+        st.info("Please enter User ID to start chatting.")
 
 if __name__ == "__main__":
     main()
