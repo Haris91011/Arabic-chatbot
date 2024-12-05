@@ -4,7 +4,7 @@ import json
 import uuid
 
 # Configure the base URL for your FastAPI backend
-BASE_URL = "https://testing.murshed.marahel.sa/"  # Adjust this to your FastAPI server URL
+BASE_URL = "https://murshed.marahel.sa/"  # Adjust this to your FastAPI server URL
 
 # Hardcoded chatbot ID
 DEFAULT_CHATBOT_ID = "de305d54-75b4-431b-adb2-eb6b9e546014"
